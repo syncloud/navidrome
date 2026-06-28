@@ -13,28 +13,9 @@ APP = 'navidrome'
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 
-def _diag(device):
-    print("\n========== BACKEND JOURNAL ==========")
-    print(device.run_ssh('journalctl -u snap.navidrome.backend --no-pager | tail -120', throw=False))
-    print("\n========== NAVIDROME JOURNAL ==========")
-    print(device.run_ssh('journalctl -u snap.navidrome.navidrome --no-pager | tail -120', throw=False))
-    print("\n========== DIRECT navidrome.sock + Remote-User ==========")
-    print(device.run_ssh(
-        'curl -s -m 10 -H "Remote-User: user" --unix-socket /var/snap/navidrome/current/navidrome.sock '
-        '"http://localhost/rest/ping?v=1.16.1&c=diag&f=json"', throw=False))
-    print("\n========== DIRECT navidrome.sock native u/p ==========")
-    print(device.run_ssh(
-        'curl -s -m 10 --unix-socket /var/snap/navidrome/current/navidrome.sock '
-        '"http://localhost/rest/ping?u=user&p=Password1&v=1.16.1&c=diag&f=json"', throw=False))
-    print("\n========== LDAP bind probe (ldapwhoami) ==========")
-    print(device.run_ssh(
-        'ldapwhoami -x -H ldap://localhost:389 -D "cn=user,ou=users,dc=syncloud,dc=org" -w Password1 2>&1 || echo "ldapwhoami failed/absent"', throw=False))
-
-
 @pytest.fixture(scope="session")
 def module_setup(request, device, artifact_dir):
     def module_teardown():
-        _diag(device)
         device.run_ssh('ls -la /var/snap/{0}/current > {1}/var.current.ls.log'.format(APP, TMP_DIR), throw=False)
         device.run_ssh('cat /var/snap/{0}/current/config/nginx.conf > {1}/nginx.conf.log'.format(APP, TMP_DIR), throw=False)
         device.run_ssh('cat /var/snap/{0}/current/config/oidc.env > {1}/oidc.env.log'.format(APP, TMP_DIR), throw=False)
