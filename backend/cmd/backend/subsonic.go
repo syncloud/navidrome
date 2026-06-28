@@ -8,10 +8,11 @@ import (
 	"backend/auth"
 )
 
-func subsonicHandler(ldap *auth.LDAP, proxy http.Handler) http.Handler {
+func subsonicHandler(ldap *auth.LDAP, proxy http.Handler, ensurer *userEnsurer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		user, pass, ok := subsonicCredentials(r)
 		if ok && ldap.Authenticate(user, pass) {
+			ensurer.ensure(user)
 			proxy.ServeHTTP(w, withUser(r, user))
 			return
 		}

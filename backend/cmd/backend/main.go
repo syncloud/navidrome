@@ -76,12 +76,13 @@ func run(logger *zap.Logger) error {
 
 	ldap := auth.NewLDAP(ldapURL, logger)
 	proxy := newNavidromeProxy(navidromeSock, logger)
+	ensurer := newUserEnsurer(navidromeSock, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /syncloud-oidc/login", oidc.Login)
 	mux.HandleFunc("GET /syncloud-oidc/callback", oidc.Callback)
 	mux.HandleFunc("GET /syncloud-oidc/logout", oidc.Logout)
-	mux.Handle("/rest/", subsonicHandler(ldap, proxy))
+	mux.Handle("/rest/", subsonicHandler(ldap, proxy, ensurer))
 	mux.Handle("/", webHandler(oidc, proxy))
 
 	_ = os.Remove(backendSock)
