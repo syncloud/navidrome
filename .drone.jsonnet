@@ -116,7 +116,7 @@ local build(arch, ui) = [{
     },
   ],
   trigger: {
-    event: ['push'],
+    event: ['push', 'custom'],
   },
   services: [
     {
