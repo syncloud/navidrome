@@ -137,5 +137,5 @@ local build(arch, ui) = [{
   ],
 }];
 
-build('amd64', true)
-// + build('arm64', false)   // re-enable once the arm64 build runner is back online
+build('amd64', true) +
+build('arm64', false)
