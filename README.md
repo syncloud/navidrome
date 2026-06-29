@@ -8,12 +8,14 @@ Tracks [syncloud/platform#741](https://github.com/syncloud/platform/issues/741).
 
 ## Authentication
 
-- **Web UI** — OpenID Connect single sign-on against the platform's Authelia, the same login as
-  the rest of the Syncloud dashboard.
-- **Subsonic / mobile apps** — log in with your **Syncloud username and password** (validated
-  against the platform LDAP). Set the client to send the password as plaintext / BasicAuth (safe
-  over the platform's HTTPS); the Subsonic token scheme can't be verified against LDAP and falls
-  back to Navidrome's native login.
+nginx authenticates every request against the platform's Authelia (`auth_request`) and passes the
+user to Navidrome via the trusted `Remote-User` header — no app-specific auth code.
+
+- **Web UI** — Authelia single sign-on, the same login as the rest of the Syncloud dashboard.
+- **Subsonic / mobile apps** — log in with your **Syncloud username and password** using the
+  client's **HTTP Basic auth** option (validated by Authelia). Open the Navidrome web UI once so
+  your account is created, then mobile clients work. The Subsonic *token* scheme can't be verified
+  by Authelia, so use Basic auth.
 
 ## Upstream version
 

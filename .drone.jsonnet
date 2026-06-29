@@ -47,11 +47,6 @@ local build(arch, ui) = [{
     for distro in distros
   ] + [
     {
-      name: 'backend',
-      image: 'golang:' + go,
-      commands: ['./backend/build.sh'],
-    },
-    {
       name: 'cli',
       image: 'golang:' + go,
       commands: ['./cli/build.sh'],

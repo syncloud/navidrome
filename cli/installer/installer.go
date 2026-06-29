@@ -1,8 +1,6 @@
 package installer
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path"
@@ -15,26 +13,21 @@ import (
 )
 
 type Variables struct {
-	App              string
-	AppDir           string
-	DataDir          string
-	CommonDir        string
-	StorageDir       string
-	AppDomain        string
-	AppUrl           string
-	AuthUrl          string
-	OIDCClientID     string
-	OIDCClientSecret string
-	OIDCRedirectURI  string
-	Socket           string
+	App             string
+	AppDir          string
+	DataDir         string
+	CommonDir       string
+	StorageDir      string
+	Socket          string
+	AuthUrl         string
+	AuthLocalSocket string
 }
 
 const (
-	App         = "navidrome"
-	AppDir      = "/snap/navidrome/current"
-	DataDir     = "/var/snap/navidrome/current"
-	CommonDir   = "/var/snap/navidrome/common"
-	OIDCCallback = "/syncloud-oidc/callback"
+	App       = "navidrome"
+	AppDir    = "/snap/navidrome/current"
+	DataDir   = "/var/snap/navidrome/current"
+	CommonDir = "/var/snap/navidrome/common"
 )
 
 type Installer struct {
@@ -42,7 +35,6 @@ type Installer struct {
 	currentVersionFile string
 	platformClient     *platform.Client
 	installFile        string
-	secretFile         string
 	logger             *zap.Logger
 }
 
@@ -52,7 +44,6 @@ func New(logger *zap.Logger) *Installer {
 		currentVersionFile: path.Join(DataDir, "version"),
 		platformClient:     platform.New(),
 		installFile:        path.Join(CommonDir, "installed"),
-		secretFile:         path.Join(DataDir, ".secret"),
 		logger:             logger,
 	}
 }
@@ -152,39 +143,20 @@ func (i *Installer) UpdateConfigs() error {
 }
 
 func (i *Installer) GenerateConfig(storageDir string) error {
-	oidcSecret, err := i.platformClient.RegisterOIDCClient(App, OIDCCallback, true, "client_secret_basic")
-	if err != nil {
-		return fmt.Errorf("register oidc client: %w", err)
-	}
 	authUrl, err := i.platformClient.GetAppUrl("auth")
 	if err != nil {
 		return err
 	}
-	appUrl, err := i.platformClient.GetAppUrl(App)
-	if err != nil {
-		return err
-	}
-	appDomain, err := i.platformClient.GetAppDomainName(App)
-	if err != nil {
-		return err
-	}
-	if _, err := i.cookieSecret(); err != nil {
-		return err
-	}
 
 	variables := Variables{
-		App:              App,
-		AppDir:           AppDir,
-		DataDir:          DataDir,
-		CommonDir:        CommonDir,
-		StorageDir:       storageDir,
-		AppDomain:        appDomain,
-		AppUrl:           appUrl,
-		AuthUrl:          authUrl,
-		OIDCClientID:     App,
-		OIDCClientSecret: oidcSecret,
-		OIDCRedirectURI:  trimRightSlash(appUrl) + OIDCCallback,
-		Socket:           path.Join(DataDir, "backend.sock"),
+		App:             App,
+		AppDir:          AppDir,
+		DataDir:         DataDir,
+		CommonDir:       CommonDir,
+		StorageDir:      storageDir,
+		Socket:          path.Join(DataDir, "navidrome.sock"),
+		AuthUrl:         authUrl,
+		AuthLocalSocket: i.platformClient.GetAuthLocalSocket(),
 	}
 
 	return config.Generate(
@@ -192,22 +164,6 @@ func (i *Installer) GenerateConfig(storageDir string) error {
 		path.Join(DataDir, "config"),
 		variables,
 	)
-}
-
-func (i *Installer) cookieSecret() (string, error) {
-	existing, err := os.ReadFile(i.secretFile)
-	if err == nil && len(existing) > 0 {
-		return string(existing), nil
-	}
-	buf := make([]byte, 32)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
-	}
-	secret := hex.EncodeToString(buf)
-	if err := os.WriteFile(i.secretFile, []byte(secret), 0640); err != nil {
-		return "", err
-	}
-	return secret, nil
 }
 
 func (i *Installer) FixPermissions() error {
@@ -220,10 +176,3 @@ func (i *Installer) FixPermissions() error {
 func (i *Installer) BackupPreStop() error    { return i.PreRefresh() }
 func (i *Installer) RestorePreStart() error  { return i.PostRefresh() }
 func (i *Installer) RestorePostStart() error { return i.Configure() }
-
-func trimRightSlash(s string) string {
-	for len(s) > 0 && s[len(s)-1] == '/' {
-		s = s[:len(s)-1]
-	}
-	return s
-}

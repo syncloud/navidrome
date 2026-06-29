@@ -11,14 +11,6 @@ apps:
     start-timeout: 600s
     restart-delay: 10s
 
-  backend:
-    user: navidrome
-    command: bin/service.backend.sh
-    daemon: simple
-    restart-condition: always
-    start-timeout: 600s
-    restart-delay: 10s
-
   nginx:
     user: navidrome
     command: bin/service.nginx.sh
