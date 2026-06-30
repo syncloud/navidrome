@@ -18,14 +18,15 @@ export default async function globalTeardown () {
   for (const name of fs.readdirSync(resultsDir)) {
     const dir = path.join(resultsDir, name)
     if (!fs.statSync(dir).isDirectory()) continue
+    const prefix = name.split('-').slice(0, 2).join('-')
     for (const f of fs.readdirSync(dir)) {
       const src = path.join(dir, f)
       if (f.endsWith('.png')) {
-        fs.copyFileSync(src, path.join(shots, `${name}-${f}`))
+        fs.copyFileSync(src, path.join(shots, `${prefix}-${f}`))
         pngs++
       }
       if (f.endsWith('.webm')) {
-        fs.copyFileSync(src, path.join(videos, `${name}-${f}`))
+        fs.copyFileSync(src, path.join(videos, `${prefix}-${f}`))
       }
     }
   }
