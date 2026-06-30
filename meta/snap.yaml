@@ -19,13 +19,6 @@ apps:
     start-timeout: 600s
     restart-delay: 10s
 
-  nextcloud-link:
-    command: bin/service.nextcloud-link.sh
-    daemon: simple
-    restart-condition: always
-    start-timeout: 600s
-    restart-delay: 10s
-
   cli:
     command: bin/cli
 

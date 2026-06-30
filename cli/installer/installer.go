@@ -100,7 +100,19 @@ func (i *Installer) StorageChange() error {
 	if err != nil {
 		return err
 	}
-	return linux.Chown(storageDir, App)
+	if err := linux.Chown(storageDir, App); err != nil {
+		return err
+	}
+	return linkNextcloud(storageDir)
+}
+
+func linkNextcloud(storageDir string) error {
+	link := path.Join(storageDir, "nextcloud")
+	if target, err := os.Readlink(link); err == nil && target == "/data/nextcloud" {
+		return nil
+	}
+	_ = os.Remove(link)
+	return os.Symlink("/data/nextcloud", link)
 }
 
 func (i *Installer) ClearVersion() error {
