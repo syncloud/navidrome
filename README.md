@@ -4,8 +4,6 @@
 [Syncloud](https://syncloud.org) app. Subsonic/OpenSubsonic API compatible, so it works with
 the existing client ecosystem (Symfonium, Amperfy, play:Sub, DSub, Feishin, …).
 
-Tracks [syncloud/platform#741](https://github.com/syncloud/platform/issues/741).
-
 ## Authentication
 
 nginx authenticates every request against the platform's Authelia (`auth_request`) and passes the
