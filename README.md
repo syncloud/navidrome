@@ -17,6 +17,13 @@ user to Navidrome via the trusted `Remote-User` header — no app-specific auth 
   your account is created, then mobile clients work. The Subsonic *token* scheme can't be verified
   by Authelia, so use Basic auth.
 
+## Adding music
+
+Navidrome has no upload UI by design — it serves an existing on-disk library. Copy your
+music into `/data/navidrome` on the device (e.g. over
+[SFTP / remote file access](https://github.com/syncloud/platform/wiki/Remote-file-access));
+Navidrome scans it automatically.
+
 ## Upstream version
 
 Pinned in `.drone.jsonnet` (`local version = '...'`).

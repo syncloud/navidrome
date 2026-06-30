@@ -42,7 +42,7 @@ local build(arch, ui) = [{
     {
       name: 'navidrome test ' + distro,
       image: platform_image(distro, arch),
-      commands: ['./navidrome/test.sh'],
+      commands: ['./navidrome/test.sh ' + version],
     }
     for distro in distros
   ] + [
