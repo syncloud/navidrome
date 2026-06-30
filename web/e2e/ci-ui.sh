@@ -11,6 +11,8 @@ export PLAYWRIGHT_PASSWORD="${PLAYWRIGHT_PASSWORD:-Password1}"
 DOMAIN="$PLAYWRIGHT_DOMAIN"
 APP_DOMAIN="${NAME}.${DOMAIN}"
 SSH_PASS="${PLAYWRIGHT_SSH_PASSWORD:-$PLAYWRIGHT_PASSWORD}"
+export PLAYWRIGHT_ARTIFACT_DIR="$( cd "${DIR}/../.." && pwd )/artifact"
+mkdir -p "${PLAYWRIGHT_ARTIFACT_DIR}"
 
 getent hosts $APP_DOMAIN | sed "s/$APP_DOMAIN/auth.$DOMAIN/g" | tee -a /etc/hosts
 cat /etc/hosts

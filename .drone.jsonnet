@@ -106,7 +106,7 @@ local build(arch, ui) = [{
       },
       when: {
         status: ['failure', 'success'],
-        event: ['push'],
+        event: ['push', 'custom'],
       },
     },
   ],
