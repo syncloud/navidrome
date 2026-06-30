@@ -67,6 +67,11 @@ def test_sockets(device):
     device.run_ssh('test -S /var/snap/navidrome/common/web.socket', retries=30)
 
 
+def test_nextcloud_link_noop_without_nextcloud(device):
+    device.run_ssh('systemctl is-active snap.navidrome.nextcloud-link', retries=15)
+    device.run_ssh('test ! -e /data/navidrome/nextcloud')
+
+
 def test_web_requires_auth(app_domain):
     session = requests.session()
     last = None
