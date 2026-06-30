@@ -106,12 +106,12 @@ local build(arch, ui) = [{
       },
       when: {
         status: ['failure', 'success'],
-        event: ['push', 'custom'],
+        event: ['push'],
       },
     },
   ],
   trigger: {
-    event: ['push', 'custom'],
+    event: ['push'],
   },
   services: [
     {
