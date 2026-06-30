@@ -17,7 +17,6 @@ type Variables struct {
 	AppDir          string
 	DataDir         string
 	CommonDir       string
-	StorageDir      string
 	Socket          string
 	AuthUrl         string
 	AuthLocalSocket string
@@ -75,9 +74,6 @@ func (i *Installer) Initialize() error {
 }
 
 func (i *Installer) Upgrade() error {
-	if err := i.StorageChange(); err != nil {
-		return err
-	}
 	return i.UpdateVersion()
 }
 
@@ -119,9 +115,6 @@ func (i *Installer) UpdateConfigs() error {
 	if err := linux.CreateUser(App); err != nil {
 		return err
 	}
-	if err := i.StorageChange(); err != nil {
-		return err
-	}
 	if err := linux.CreateMissingDirs(
 		path.Join(DataDir, "config"),
 		path.Join(DataDir, "nginx"),
@@ -130,19 +123,14 @@ func (i *Installer) UpdateConfigs() error {
 	); err != nil {
 		return err
 	}
-
-	storageDir, err := i.platformClient.InitStorage(App, App)
-	if err != nil {
-		return err
-	}
-	if err := i.GenerateConfig(storageDir); err != nil {
+	if err := i.GenerateConfig(); err != nil {
 		return fmt.Errorf("generate config: %w", err)
 	}
 
 	return i.FixPermissions()
 }
 
-func (i *Installer) GenerateConfig(storageDir string) error {
+func (i *Installer) GenerateConfig() error {
 	authUrl, err := i.platformClient.GetAppUrl("auth")
 	if err != nil {
 		return err
@@ -153,7 +141,6 @@ func (i *Installer) GenerateConfig(storageDir string) error {
 		AppDir:          AppDir,
 		DataDir:         DataDir,
 		CommonDir:       CommonDir,
-		StorageDir:      storageDir,
 		Socket:          path.Join(DataDir, "navidrome.sock"),
 		AuthUrl:         authUrl,
 		AuthLocalSocket: i.platformClient.GetAuthLocalSocket(),
