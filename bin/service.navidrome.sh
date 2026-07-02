@@ -12,5 +12,6 @@ export ND_EXTAUTH_TRUSTEDSOURCES=@
 export ND_LOGLEVEL=info
 export ND_ENABLEINSIGHTSCOLLECTOR=false
 export ND_SCANSCHEDULE=1h
+export ND_FFMPEGPATH=${SNAP}/navidrome/ffmpeg
 
 exec ${SNAP}/navidrome/navidrome
