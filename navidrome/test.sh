@@ -15,3 +15,8 @@ OUT=$(${BUILD_DIR}/navidrome --version)
 echo "navidrome --version: ${OUT}"
 echo "${OUT}" | grep -q "${VERSION}"
 echo "navidrome ${VERSION} ok"
+
+FF=$(${BUILD_DIR}/ffmpeg -version)
+echo "ffmpeg -version: ${FF}"
+echo "${FF}" | grep -q "ffmpeg version"
+echo "ffmpeg ok"
