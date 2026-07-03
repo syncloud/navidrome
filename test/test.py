@@ -39,12 +39,11 @@ def provision_user(app_domain, user, password):
     return False
 
 
-def subsonic_ping(app_domain, user, password):
-    session = requests.session()
-    return session.get(
-        "https://{0}/rest/ping".format(app_domain),
-        params={'v': '1.16.1', 'c': 'syncloud-test', 'f': 'json'},
-        auth=(user, password), verify=False, timeout=10)
+def subsonic_ping_plain(app_domain, user, password):
+    return requests.get(
+        "https://{0}/rest/ping.view".format(app_domain),
+        params={'u': user, 'p': password, 'v': '1.16.1', 'c': 'test', 'f': 'json'},
+        verify=False, allow_redirects=False, timeout=10)
 
 
 def subsonic_ping_token(app_domain, user, password):
@@ -131,8 +130,8 @@ def test_subsonic_login_with_navidrome_password(app_domain, device_user, device_
     set_navidrome_password(app_domain, device_user, device_password, NAVIDROME_PASSWORD)
     ok_token, r = subsonic_login_ok(subsonic_ping_token, app_domain, device_user, NAVIDROME_PASSWORD)
     assert ok_token, "token login failed: {0}".format(r.text if r is not None else 'no response')
-    ok_basic, r = subsonic_login_ok(subsonic_ping, app_domain, device_user, NAVIDROME_PASSWORD)
-    assert ok_basic, "basic login failed: {0}".format(r.text if r is not None else 'no response')
+    ok_plain, r = subsonic_login_ok(subsonic_ping_plain, app_domain, device_user, NAVIDROME_PASSWORD)
+    assert ok_plain, "plaintext login failed: {0}".format(r.text if r is not None else 'no response')
 
 
 def test_subsonic_rejects_wrong_password(app_domain, device_user):
