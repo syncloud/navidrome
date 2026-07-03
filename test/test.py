@@ -1,3 +1,4 @@
+import hashlib
 import time
 from subprocess import check_output
 
@@ -43,6 +44,16 @@ def subsonic_ping(app_domain, user, password):
         "https://{0}/rest/ping".format(app_domain),
         params={'v': '1.16.1', 'c': 'syncloud-test', 'f': 'json'},
         auth=(user, password), verify=False, timeout=10)
+
+
+def subsonic_ping_token(app_domain, user, password):
+    salt = 'navsonicsalt'
+    token = hashlib.md5((password + salt).encode()).hexdigest()
+    return requests.get(
+        "https://{0}/rest/ping.view".format(app_domain),
+        params={'u': user, 't': token, 's': salt,
+                'v': '1.16.1', 'c': 'navsonic', 'f': 'json'},
+        verify=False, allow_redirects=False, timeout=10)
 
 
 def test_start(module_setup, device, device_host, app, domain):
@@ -91,6 +102,14 @@ def test_subsonic_login_via_authelia(app_domain, device_user, device_password):
 def test_subsonic_rejects_wrong_password(app_domain, device_user):
     r = subsonic_ping(app_domain, device_user, 'definitely-wrong')
     assert r.status_code == 401, "expected 401 from authelia basic, got {0}: {1}".format(r.status_code, r.text[:200])
+
+
+def test_subsonic_token_auth_reaches_navidrome(app_domain, device_user):
+    r = subsonic_ping_token(app_domain, device_user, device_user)
+    assert r.status_code == 200, \
+        "Subsonic token auth (NavSonic-style) was blocked before reaching navidrome " \
+        "(got {0}); /rest must use navidrome native auth, not Authelia".format(r.status_code)
+    assert r.json().get('subsonic-response', {}).get('type') == 'navidrome', r.text
 
 
 def test_remove(device, app):
