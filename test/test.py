@@ -10,6 +10,7 @@ from syncloudlib.integration.installer import local_install
 
 TMP_DIR = '/tmp/syncloud'
 APP = 'navidrome'
+NAVIDROME_PASSWORD = 'navsonic-app-password'
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -56,6 +57,20 @@ def subsonic_ping_token(app_domain, user, password):
         verify=False, allow_redirects=False, timeout=10)
 
 
+def set_navidrome_password(app_domain, user, syncloud_password, new_password):
+    session = requests.session()
+    users = session.get("https://{0}/api/user".format(app_domain),
+                        auth=(user, syncloud_password), verify=False, timeout=10)
+    assert users.status_code == 200, "list users: {0} {1}".format(users.status_code, users.text[:200])
+    uid = users.json()[0]['id']
+    r = session.put("https://{0}/api/user/{1}".format(app_domain, uid),
+                    auth=(user, syncloud_password),
+                    json={'id': uid, 'userName': user, 'name': user,
+                          'isAdmin': True, 'password': new_password},
+                    verify=False, timeout=10)
+    assert r.status_code == 200, "set password: {0} {1}".format(r.status_code, r.text[:200])
+
+
 def test_start(module_setup, device, device_host, app, domain):
     add_host_alias(app, device_host, domain)
     device.run_ssh('date', retries=100)
@@ -91,25 +106,45 @@ def test_web_requires_auth(app_domain):
     assert False, "expected redirect to Authelia portal, last status {0}".format(last)
 
 
-@pytest.mark.flaky(retries=10, delay=6)
-def test_subsonic_login_via_authelia(app_domain, device_user, device_password):
-    assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
-    r = subsonic_ping(app_domain, device_user, device_password)
-    assert r.status_code == 200, r.text
-    assert r.json().get('subsonic-response', {}).get('status') == 'ok', r.text
-
-
-def test_subsonic_rejects_wrong_password(app_domain, device_user):
-    r = subsonic_ping(app_domain, device_user, 'definitely-wrong')
-    assert r.status_code == 401, "expected 401 from authelia basic, got {0}: {1}".format(r.status_code, r.text[:200])
-
-
 def test_subsonic_token_auth_reaches_navidrome(app_domain, device_user):
     r = subsonic_ping_token(app_domain, device_user, device_user)
     assert r.status_code == 200, \
         "Subsonic token auth (NavSonic-style) was blocked before reaching navidrome " \
         "(got {0}); /rest must use navidrome native auth, not Authelia".format(r.status_code)
     assert r.json().get('subsonic-response', {}).get('type') == 'navidrome', r.text
+
+
+@pytest.mark.flaky(retries=10, delay=6)
+def test_subsonic_login_with_navidrome_password(app_domain, device_user, device_password):
+    assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
+    set_navidrome_password(app_domain, device_user, device_password, NAVIDROME_PASSWORD)
+    token = subsonic_ping_token(app_domain, device_user, NAVIDROME_PASSWORD)
+    assert token.status_code == 200, token.text
+    assert token.json().get('subsonic-response', {}).get('status') == 'ok', token.text
+    basic = subsonic_ping(app_domain, device_user, NAVIDROME_PASSWORD)
+    assert basic.status_code == 200, basic.text
+    assert basic.json().get('subsonic-response', {}).get('status') == 'ok', basic.text
+
+
+def test_subsonic_rejects_wrong_password(app_domain, device_user):
+    r = subsonic_ping_token(app_domain, device_user, 'definitely-wrong')
+    assert r.status_code == 200, r.text
+    body = r.json().get('subsonic-response', {})
+    assert body.get('status') == 'failed', r.text
+    assert body.get('error', {}).get('code') == 40, r.text
+
+
+def test_rest_ignores_forged_remote_user_header(app_domain, device_user):
+    salt = 'forge'
+    token = hashlib.md5(('wrong' + salt).encode()).hexdigest()
+    r = requests.get("https://{0}/rest/ping.view".format(app_domain),
+                     params={'u': device_user, 't': token, 's': salt,
+                             'v': '1.16.1', 'c': 'test', 'f': 'json'},
+                     headers={'Remote-User': device_user},
+                     verify=False, allow_redirects=False, timeout=10)
+    assert r.status_code == 200, r.text
+    body = r.json().get('subsonic-response', {})
+    assert body.get('status') == 'failed', "forged Remote-User must not authenticate: {0}".format(r.text)
 
 
 def test_remove(device, app):
@@ -124,6 +159,7 @@ def test_reinstall(app_archive_path, device_host, device_password):
 @pytest.mark.flaky(retries=10, delay=6)
 def test_subsonic_after_reinstall(app_domain, device_user, device_password):
     assert provision_user(app_domain, device_user, device_password), "web provisioning failed after reinstall"
-    r = subsonic_ping(app_domain, device_user, device_password)
+    set_navidrome_password(app_domain, device_user, device_password, NAVIDROME_PASSWORD)
+    r = subsonic_ping_token(app_domain, device_user, NAVIDROME_PASSWORD)
     assert r.status_code == 200, r.text
     assert r.json().get('subsonic-response', {}).get('status') == 'ok', r.text
