@@ -65,10 +65,21 @@ def set_navidrome_password(app_domain, user, syncloud_password, new_password):
     uid = users.json()[0]['id']
     r = session.put("https://{0}/api/user/{1}".format(app_domain, uid),
                     auth=(user, syncloud_password),
-                    json={'id': uid, 'userName': user, 'name': user,
-                          'isAdmin': True, 'password': new_password},
+                    json={'id': uid, 'userName': user, 'name': user, 'isAdmin': True,
+                          'password': new_password, 'currentPassword': new_password},
                     verify=False, timeout=10)
     assert r.status_code == 200, "set password: {0} {1}".format(r.status_code, r.text[:200])
+
+
+def subsonic_login_ok(ping_fn, app_domain, user, password):
+    last = None
+    for _ in range(15):
+        last = ping_fn(app_domain, user, password)
+        if last.status_code == 200 and \
+                last.json().get('subsonic-response', {}).get('status') == 'ok':
+            return True, last
+        time.sleep(2)
+    return False, last
 
 
 def test_start(module_setup, device, device_host, app, domain):
@@ -114,16 +125,14 @@ def test_subsonic_token_auth_reaches_navidrome(app_domain, device_user):
     assert r.json().get('subsonic-response', {}).get('type') == 'navidrome', r.text
 
 
-@pytest.mark.flaky(retries=10, delay=6)
+@pytest.mark.flaky(retries=5, delay=6)
 def test_subsonic_login_with_navidrome_password(app_domain, device_user, device_password):
     assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
     set_navidrome_password(app_domain, device_user, device_password, NAVIDROME_PASSWORD)
-    token = subsonic_ping_token(app_domain, device_user, NAVIDROME_PASSWORD)
-    assert token.status_code == 200, token.text
-    assert token.json().get('subsonic-response', {}).get('status') == 'ok', token.text
-    basic = subsonic_ping(app_domain, device_user, NAVIDROME_PASSWORD)
-    assert basic.status_code == 200, basic.text
-    assert basic.json().get('subsonic-response', {}).get('status') == 'ok', basic.text
+    ok_token, r = subsonic_login_ok(subsonic_ping_token, app_domain, device_user, NAVIDROME_PASSWORD)
+    assert ok_token, "token login failed: {0}".format(r.text if r is not None else 'no response')
+    ok_basic, r = subsonic_login_ok(subsonic_ping, app_domain, device_user, NAVIDROME_PASSWORD)
+    assert ok_basic, "basic login failed: {0}".format(r.text if r is not None else 'no response')
 
 
 def test_subsonic_rejects_wrong_password(app_domain, device_user):
@@ -156,10 +165,9 @@ def test_reinstall(app_archive_path, device_host, device_password):
     local_install(device_host, device_password, app_archive_path)
 
 
-@pytest.mark.flaky(retries=10, delay=6)
+@pytest.mark.flaky(retries=5, delay=6)
 def test_subsonic_after_reinstall(app_domain, device_user, device_password):
     assert provision_user(app_domain, device_user, device_password), "web provisioning failed after reinstall"
     set_navidrome_password(app_domain, device_user, device_password, NAVIDROME_PASSWORD)
-    r = subsonic_ping_token(app_domain, device_user, NAVIDROME_PASSWORD)
-    assert r.status_code == 200, r.text
-    assert r.json().get('subsonic-response', {}).get('status') == 'ok', r.text
+    ok, r = subsonic_login_ok(subsonic_ping_token, app_domain, device_user, NAVIDROME_PASSWORD)
+    assert ok, "token login failed after reinstall: {0}".format(r.text if r is not None else 'no response')
