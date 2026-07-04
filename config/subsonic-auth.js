@@ -3,13 +3,17 @@
 // them. A real Authorization header (client already using HTTP Basic) is passed
 // through unchanged. Token auth (t/s) yields an empty value -> Authelia denies,
 // which is correct: token auth cannot be validated against an external store.
+//
+// This runs inside the auth_request subrequest, whose own args are empty; the
+// original ?u=&p= lives on the parent (main) request.
 function subsonicBasic(r) {
-    var existing = r.headersIn['Authorization'];
+    var req = r.parent || r;
+    var existing = req.headersIn['Authorization'];
     if (existing) {
         return existing;
     }
-    var u = r.args.u;
-    var p = r.args.p;
+    var u = req.args.u;
+    var p = req.args.p;
     if (!u || !p) {
         return '';
     }
