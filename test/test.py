@@ -45,6 +45,13 @@ def subsonic_ping(app_domain, user, password):
         auth=(user, password), verify=False, timeout=10)
 
 
+def subsonic_ping_query(app_domain, user, password):
+    return requests.get(
+        "https://{0}/rest/ping.view".format(app_domain),
+        params={'u': user, 'p': password, 'v': '1.16.1', 'c': 'test', 'f': 'json'},
+        verify=False, allow_redirects=False, timeout=10)
+
+
 def test_start(module_setup, device, device_host, app, domain):
     add_host_alias(app, device_host, domain)
     device.run_ssh('date', retries=100)
@@ -85,6 +92,16 @@ def test_subsonic_login_via_authelia(app_domain, device_user, device_password):
     assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
     r = subsonic_ping(app_domain, device_user, device_password)
     assert r.status_code == 200, r.text
+    assert r.json().get('subsonic-response', {}).get('status') == 'ok', r.text
+
+
+@pytest.mark.flaky(retries=10, delay=6)
+def test_subsonic_query_password_login(app_domain, device_user, device_password):
+    assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
+    r = subsonic_ping_query(app_domain, device_user, device_password)
+    assert r.status_code == 200, \
+        "u/p query login (Symfonium-style) blocked before Authelia (got {0}); " \
+        "nginx must synthesize a Basic header from u/p".format(r.status_code)
     assert r.json().get('subsonic-response', {}).get('status') == 'ok', r.text
 
 
