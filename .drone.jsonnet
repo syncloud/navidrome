@@ -1,5 +1,5 @@
 local name = 'navidrome';
-local version = '0.62.0';
+local version = '0.62.0-apikey';
 local go = '1.25';
 local nginx = '1.24.0';
 local python = '3.12-slim-bookworm';

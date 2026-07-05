@@ -52,6 +52,13 @@ def subsonic_ping_query(app_domain, user, password):
         verify=False, allow_redirects=False, timeout=10)
 
 
+def subsonic_ping_apikey(app_domain, api_key):
+    return requests.get(
+        "https://{0}/rest/ping.view".format(app_domain),
+        params={'apiKey': api_key, 'v': '1.16.1', 'c': 'test', 'f': 'json'},
+        verify=False, allow_redirects=False, timeout=10)
+
+
 def test_start(module_setup, device, device_host, app, domain):
     add_host_alias(app, device_host, domain)
     device.run_ssh('date', retries=100)
@@ -119,6 +126,29 @@ def test_subsonic_wrong_password_returns_subsonic_error(app_domain, device_user)
         "wrong-cred /rest must return HTTP 200 + a Subsonic error, not a raw {0} " \
         "(Symfonium-style clients send a throwaway-credential probe before authenticating " \
         "and treat a non-Subsonic 401 as a failed connection): {1}".format(r.status_code, r.text[:200])
+    resp = r.json().get('subsonic-response', {})
+    assert resp.get('status') == 'failed', r.text
+    assert resp.get('error', {}).get('code') == 40, r.text
+
+
+@pytest.mark.flaky(retries=10, delay=6)
+def test_subsonic_apikey_extension_advertised(app_domain, device_user, device_password):
+    assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
+    r = requests.get(
+        "https://{0}/rest/getOpenSubsonicExtensions.view".format(app_domain),
+        params={'u': device_user, 'p': device_password, 'v': '1.16.1', 'c': 'test', 'f': 'json'},
+        verify=False, timeout=10)
+    assert r.status_code == 200, r.text
+    exts = [e.get('name') for e in r.json().get('subsonic-response', {}).get('openSubsonicExtensions', [])]
+    assert 'apiKeyAuthentication' in exts, \
+        "patched navidrome must advertise apiKeyAuthentication, got: {0}".format(exts)
+
+
+def test_subsonic_apikey_bogus_returns_subsonic_error(app_domain):
+    r = subsonic_ping_apikey(app_domain, 'nav_does_not_exist')
+    assert r.status_code == 200, \
+        "apiKey request must reach navidrome and get a Subsonic error, not a raw {0}: {1}".format(
+            r.status_code, r.text[:200])
     resp = r.json().get('subsonic-response', {})
     assert resp.get('status') == 'failed', r.text
     assert resp.get('error', {}).get('code') == 40, r.text

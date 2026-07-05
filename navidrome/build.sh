@@ -24,7 +24,7 @@ apt-get update
 apt-get install -y wget ca-certificates xz-utils
 
 wget -c --progress=dot:giga \
-    https://github.com/navidrome/navidrome/releases/download/v${VERSION}/navidrome_${VERSION}_linux_${NARCH}.tar.gz \
+    https://github.com/cyberb/navidrome/releases/download/v${VERSION}/navidrome_${VERSION}_linux_${NARCH}.tar.gz \
     -O ${DIR}/../build/navidrome.tar.gz
 
 tar xf ${DIR}/../build/navidrome.tar.gz -C ${BUILD_DIR} navidrome
