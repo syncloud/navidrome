@@ -107,7 +107,21 @@ def test_subsonic_query_password_login(app_domain, device_user, device_password)
 
 def test_subsonic_rejects_wrong_password(app_domain, device_user):
     r = subsonic_ping(app_domain, device_user, 'definitely-wrong')
-    assert r.status_code == 401, "expected 401 from authelia basic, got {0}: {1}".format(r.status_code, r.text[:200])
+    assert r.status_code == 200, r.text
+    assert r.json().get('subsonic-response', {}).get('status') == 'failed', \
+        "wrong password must be rejected with a Subsonic error, got: {0}".format(r.text[:200])
+
+
+@pytest.mark.flaky(retries=10, delay=6)
+def test_subsonic_wrong_password_returns_subsonic_error(app_domain, device_user):
+    r = subsonic_ping_query(app_domain, device_user, 'definitely-wrong')
+    assert r.status_code == 200, \
+        "wrong-cred /rest must return HTTP 200 + a Subsonic error, not a raw {0} " \
+        "(Symfonium-style clients send a throwaway-credential probe before authenticating " \
+        "and treat a non-Subsonic 401 as a failed connection): {1}".format(r.status_code, r.text[:200])
+    resp = r.json().get('subsonic-response', {})
+    assert resp.get('status') == 'failed', r.text
+    assert resp.get('error', {}).get('code') == 40, r.text
 
 
 def test_remove(device, app):
