@@ -15,10 +15,13 @@ test('create an API key on the account page and authenticate with it', async ({ 
 
   await page.getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('menuitem', { name: /api keys/i }).click()
-  await expect(page.getByRole('link', { name: /add api key/i })).toBeVisible({ timeout: 30_000 })
+  const createBtn = page
+    .getByRole('link', { name: /create|add api key/i })
+    .or(page.getByRole('button', { name: /create|add api key/i }))
+  await expect(createBtn.first()).toBeVisible({ timeout: 30_000 })
   await shoot(page, info, '02-apikey-page')
 
-  await page.getByRole('link', { name: /add api key/i }).click()
+  await createBtn.first().click()
   await page.getByTestId('apikey-name').fill('e2e-key')
   await page.getByRole('button', { name: /save/i }).click()
 
