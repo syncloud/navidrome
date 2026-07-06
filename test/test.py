@@ -158,6 +158,7 @@ def test_apikey_migration_backfills_existing_players(device, app_domain, device_
     assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
     r = subsonic_ping_query(app_domain, device_user, device_password)
     assert r.status_code == 200, r.text
+    device.run_ssh('command -v sqlite3 >/dev/null 2>&1 || (apt-get update -qq && apt-get install -y -qq sqlite3)')
     db = '/var/snap/navidrome/current/data/navidrome.db'
     device.run_ssh('snap stop navidrome.navidrome')
     device.run_ssh(

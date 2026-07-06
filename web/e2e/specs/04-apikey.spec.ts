@@ -10,6 +10,7 @@ const appDomain = `navidrome.${domain}`
 const client = 'e2e-apikey'
 
 test.beforeAll(() => {
+  ssh(`curl -sk -u '${username}:${password}' -o /dev/null "https://${appDomain}/app/"`)
   ssh(`curl -sk "https://${appDomain}/rest/ping.view?u=${username}&p=${password}&v=1.16.1&c=${client}&f=json"`)
 })
 
