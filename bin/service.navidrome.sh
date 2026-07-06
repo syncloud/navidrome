@@ -9,6 +9,7 @@ export ND_CACHEFOLDER=${SNAP_DATA}/cache
 export ND_MUSICFOLDER=/data/navidrome
 export ND_EXTAUTH_USERHEADER=Remote-User
 export ND_EXTAUTH_TRUSTEDSOURCES=@
+export ND_ENABLEUSEREDITING=false
 export ND_LOGLEVEL=info
 export ND_ENABLEINSIGHTSCOLLECTOR=false
 export ND_SCANSCHEDULE=1h

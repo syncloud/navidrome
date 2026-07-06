@@ -45,6 +45,20 @@ def subsonic_ping(app_domain, user, password):
         auth=(user, password), verify=False, timeout=10)
 
 
+def subsonic_ping_query(app_domain, user, password):
+    return requests.get(
+        "https://{0}/rest/ping.view".format(app_domain),
+        params={'u': user, 'p': password, 'v': '1.16.1', 'c': 'test', 'f': 'json'},
+        verify=False, allow_redirects=False, timeout=10)
+
+
+def subsonic_ping_apikey(app_domain, api_key):
+    return requests.get(
+        "https://{0}/rest/ping.view".format(app_domain),
+        params={'apiKey': api_key, 'v': '1.16.1', 'c': 'test', 'f': 'json'},
+        verify=False, allow_redirects=False, timeout=10)
+
+
 def test_start(module_setup, device, device_host, app, domain):
     add_host_alias(app, device_host, domain)
     device.run_ssh('date', retries=100)
@@ -88,9 +102,56 @@ def test_subsonic_login_via_authelia(app_domain, device_user, device_password):
     assert r.json().get('subsonic-response', {}).get('status') == 'ok', r.text
 
 
+@pytest.mark.flaky(retries=10, delay=6)
+def test_subsonic_query_password_login(app_domain, device_user, device_password):
+    assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
+    r = subsonic_ping_query(app_domain, device_user, device_password)
+    assert r.status_code == 200, \
+        "u/p query login (Symfonium-style) blocked before Authelia (got {0}); " \
+        "nginx must synthesize a Basic header from u/p".format(r.status_code)
+    assert r.json().get('subsonic-response', {}).get('status') == 'ok', r.text
+
+
 def test_subsonic_rejects_wrong_password(app_domain, device_user):
     r = subsonic_ping(app_domain, device_user, 'definitely-wrong')
-    assert r.status_code == 401, "expected 401 from authelia basic, got {0}: {1}".format(r.status_code, r.text[:200])
+    assert r.status_code == 200, r.text
+    assert r.json().get('subsonic-response', {}).get('status') == 'failed', \
+        "wrong password must be rejected with a Subsonic error, got: {0}".format(r.text[:200])
+
+
+@pytest.mark.flaky(retries=10, delay=6)
+def test_subsonic_wrong_password_returns_subsonic_error(app_domain, device_user):
+    r = subsonic_ping_query(app_domain, device_user, 'definitely-wrong')
+    assert r.status_code == 200, \
+        "wrong-cred /rest must return HTTP 200 + a Subsonic error, not a raw {0} " \
+        "(Symfonium-style clients send a throwaway-credential probe before authenticating " \
+        "and treat a non-Subsonic 401 as a failed connection): {1}".format(r.status_code, r.text[:200])
+    resp = r.json().get('subsonic-response', {})
+    assert resp.get('status') == 'failed', r.text
+    assert resp.get('error', {}).get('code') == 40, r.text
+
+
+@pytest.mark.flaky(retries=10, delay=6)
+def test_subsonic_apikey_extension_advertised(app_domain, device_user, device_password):
+    assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
+    r = requests.get(
+        "https://{0}/rest/getOpenSubsonicExtensions.view".format(app_domain),
+        params={'u': device_user, 'p': device_password, 'v': '1.16.1', 'c': 'test', 'f': 'json'},
+        verify=False, timeout=10)
+    assert r.status_code == 200, r.text
+    exts = [e.get('name') for e in r.json().get('subsonic-response', {}).get('openSubsonicExtensions', [])]
+    assert 'apiKeyAuthentication' in exts, \
+        "patched navidrome must advertise apiKeyAuthentication, got: {0}".format(exts)
+
+
+def test_subsonic_apikey_bogus_returns_subsonic_error(app_domain):
+    r = subsonic_ping_apikey(app_domain, 'nav_does_not_exist')
+    assert r.status_code == 200, \
+        "apiKey request must reach navidrome and get a Subsonic error, not a raw {0}: {1}".format(
+            r.status_code, r.text[:200])
+    resp = r.json().get('subsonic-response', {})
+    assert resp.get('status') == 'failed', r.text
+    assert resp.get('error', {}).get('code') == 40, r.text
 
 
 def test_remove(device, app):
