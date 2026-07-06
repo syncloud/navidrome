@@ -154,6 +154,22 @@ def test_subsonic_apikey_bogus_returns_subsonic_error(app_domain):
     assert resp.get('error', {}).get('code') == 40, r.text
 
 
+def test_apikey_migration_backfills_existing_players(device, app_domain, device_user, device_password):
+    assert provision_user(app_domain, device_user, device_password), "web provisioning failed"
+    r = subsonic_ping_query(app_domain, device_user, device_password)
+    assert r.status_code == 200, r.text
+    db = '/var/snap/navidrome/current/data/navidrome.db'
+    device.run_ssh('snap stop navidrome.navidrome')
+    device.run_ssh(
+        "sqlite3 {0} 'DROP INDEX IF EXISTS player_api_key; "
+        "ALTER TABLE player DROP COLUMN api_key; "
+        "DELETE FROM goose_db_version WHERE version_id=20260601000000;'".format(db))
+    device.run_ssh("test $(sqlite3 {0} 'SELECT count(*) FROM player') -gt 0".format(db))
+    device.run_ssh('snap start navidrome.navidrome')
+    device.run_ssh('for i in $(seq 1 30); do test -S /var/snap/navidrome/current/navidrome.sock && exit 0; sleep 2; done; exit 1')
+    device.run_ssh("test $(sqlite3 {0} 'SELECT count(*) FROM player WHERE api_key IS NULL') -eq 0".format(db))
+
+
 def test_remove(device, app):
     response = device.app_remove(app)
     assert response.status_code == 200, response.text
